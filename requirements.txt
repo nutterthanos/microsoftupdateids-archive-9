@@ -13,7 +13,7 @@ beautifulsoup4==4.12.2
 bottle==0.12.23
 bs4==0.0.1
 cachetools==5.3.0
-certifi==2022.12.7
+certifi==2023.7.22
 cffi==1.15.1
 chardet==5.1.0
 charset-normalizer==3.0.1
