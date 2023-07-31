@@ -33,11 +33,18 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Archive script
+        id: check_archive_status
         working-directory: updateids
         run: |
-          python ../update.py
+            if python ../update.py; then
+              echo "Archive script succeeded!"
+            else
+              echo "Archive script failed!"
+              exit 1
+            fi
 
       - name: Commit and push changes - updated list
+        if: ${{ failure() }}  # Stop the workflow if "Run Archive script" fails
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -46,6 +53,7 @@ jobs:
           git push origin ${{ github.ref }}
 
       - name: Increment UpdateID in update.py
+        if: ${{ failure() }}  # Stop the workflow if "Run Archive script" fails
         run: |
           # Read the current number from the file
           with open('../update.py', 'r') as f:
@@ -69,3 +77,12 @@ jobs:
           git add ../update.py
           git commit -m "Incremented UpdateID in update.py"
           git push origin ${{ github.ref }}
+
+      - name: Run Workflow again with next output file
+        if: ${{ success() }}  # Stop the workflow if "Run Archive script" does not fail
+        run: |
+          curl -X POST \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/dispatches \
+          -d '{"event_type": "workflow_dispatch"}'
