@@ -37,10 +37,35 @@ jobs:
         run: |
           python ../update.py
 
-      - name: Commit and push changes
+      - name: Commit and push changes - updated list
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add .
+          git add ./updateids
           git commit -m "Updated updateid list"
+          git push origin ${{ github.ref }}
+
+      - name: Increment UpdateID in update.py
+        run: |
+          # Read the current number from the file
+          with open ../update.py, 'r') as f:
+              content = f.read()
+              current_number = int(content.strip().split('_')[-1])
+
+          # Increment the number
+          new_number = current_number + 1
+
+          # Update the filename in the content
+          updated_content = content.replace(f'output_{current_number}', f'output_{new_number}')
+
+          # Write the updated content back to the file
+          with open('../update.py', 'w') as f:
+              f.write(updated_content)
+
+      - name: Commit and push changes - update.py
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add ../update.py
+          git commit -m "Incremented UpdateID in update.py"
           git push origin ${{ github.ref }}
