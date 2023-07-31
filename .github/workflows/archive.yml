@@ -48,7 +48,7 @@ jobs:
       - name: Increment UpdateID in update.py
         run: |
           # Read the current number from the file
-          with open ../update.py, 'r') as f:
+          with open('../update.py', 'r') as f:
               content = f.read()
               current_number = int(content.strip().split('_')[-1])
 
