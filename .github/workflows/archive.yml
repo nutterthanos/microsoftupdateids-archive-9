@@ -31,6 +31,7 @@ jobs:
           echo "Installing dependencies and caching them."
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+        continue-on-error: false  # Set this to false to stop the workflow if the step fails
 
       - name: Run Archive script
         id: check_archive_status
@@ -44,41 +45,18 @@ jobs:
             echo "failure" > ../status.txt
             exit 1
           fi
+        continue-on-error: false  # Set this to false to stop the workflow if the step fails
+
+      - name: Commit and push changes - updated list
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add ./updateids
+          git commit -m "Updated updateid list"
+          git push origin ${{ github.ref }}
         continue-on-error: true
 
-      - name: Upload status as artifact
-        if: always()
-        uses: actions/upload-artifact@v2
-        with:
-          name: archive-status
-          path: status.txt
-
-  IncrementUpdateID:
-    needs: Archive
-    runs-on: ubuntu-latest
-    if: always()  # This job will always run, but we'll check the artifact for status
-    steps:
-      - name: Download artifact with status
-        uses: actions/download-artifact@v2
-        with:
-          name: archive-status
-          path: .
-
-      - name: Check Archive status
-        id: check_archive_status
-        run: |
-          status=$(cat status.txt)
-          if [ "$status" == "success" ]; then
-            echo "Archive script succeeded!"
-            echo "::set-output name=STATUS::success"
-          else
-            echo "Archive script failed!"
-            echo "::set-output name=STATUS::failure"
-            exit 1
-          fi
-
       - name: Increment UpdateID in update.py
-        if: steps.check_archive_status.outputs.STATUS == 'success'  # Only run if "Run Archive script" succeeded
         run: |
           # Read the current number from the file
           with open('./update.py', 'r') as f:
@@ -94,30 +72,22 @@ jobs:
           # Write the updated content back to the file
           with open('./update.py', 'w') as f:
             f.write(updated_content)
-
-      - name: Commit and push changes - updateids
-        if: steps.check_archive_status.outputs.STATUS == 'success'  # Only run if "Run Archive script" succeeded
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add ./updateids
-          git commit -m "Updated updateids"
-          git push origin ${{ github.ref }}
+        continue-on-error: false  # Set this to false to stop the workflow if the step fails
 
       - name: Commit and push changes - update.py
-        if: steps.check_archive_status.outputs.STATUS == 'success'  # Only run if "Run Archive script" succeeded
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add ./update.py
           git commit -m "Incremented UpdateID in update.py"
           git push origin ${{ github.ref }}
+        continue-on-error: false  # Set this to false to stop the workflow if the step fails
 
       - name: Run Workflow again with next output file
-        if: steps.check_archive_status.outputs.STATUS == 'success'  # Only run if "Run Archive script" succeeded
         run: |
           curl -X POST \
           -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
           -H "Accept: application/vnd.github.v3+json" \
           https://api.github.com/repos/${{ github.repository }}/dispatches \
           -d '{"event_type": "workflow_dispatch"}'
+        continue-on-error: false  # Set this to false to stop the workflow if the step fails
