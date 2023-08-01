@@ -1,89 +1,90 @@
-name: Check UpdateID's 
-  
- on: 
-   workflow_dispatch: 
-  
- jobs: 
-   Archive: 
-     runs-on: ubuntu-latest 
-  
-     steps: 
-       - name: Checkout repository and install Python 
-         uses: actions/checkout@v3.5.2 
-  
-       - name: Set up Python 
-         uses: actions/setup-python@v4 
-         with: 
-           python-version: '3.9' 
-  
-       - name: Cache Dependencies 
-         uses: actions/cache@v2 
-         id: cache 
-         with: 
-           path: ~/.cache/pip 
-           key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }} 
-           restore-keys: | 
-             ${{ runner.os }}-pip- 
-  
-       - name: Install Dependencies 
-         if: steps.cache.outputs.cache-hit != 'true' 
-         run: | 
-           echo "Installing dependencies and caching them." 
-           python -m pip install --upgrade pip 
-           pip install -r requirements.txt 
-  
-       - name: Run Archive script 
-         id: check_archive_status 
-         working-directory: updateids 
-         run: | 
-           if python ../update.py; then 
-             echo "Archive script succeeded!" 
-             echo "STATUS=success" >> $GITHUB_ENV 
-           else 
-             echo "Archive script failed!" 
-             exit 1 
-           fi 
-  
-       - name: Commit and push changes - updated list 
-         if: env.STATUS == 'success'  # Only run if "Run Archive script" succeeds 
-         run: | 
-           git config --local user.email "action@github.com" 
-           git config --local user.name "GitHub Action" 
-           git add ./updateids 
-           git commit -m "Updated updateid list" 
-           git push origin ${{ github.ref }} 
-  
-       - name: Increment UpdateID in update.py 
-         if: env.STATUS == 'success'  # Only run if "Run Archive script" succeeds 
-         run: | 
-           # Read the current number from the file 
-           with open('./update.py', 'r') as f: 
-               content = f.read() 
-               current_number = int(content.strip().split('_')[-1]) 
-  
-           # Increment the number 
-           new_number = current_number + 1 
-  
-           # Update the filename in the content 
-           updated_content = content.replace(f'output_{current_number}', f'output_{new_number}') 
-  
-           # Write the updated content back to the file 
-           with open('./update.py', 'w') as f: 
-               f.write(updated_content) 
-  
-       - name: Commit and push changes - update.py 
-         run: | 
-           git config --local user.email "action@github.com" 
-           git config --local user.name "GitHub Action" 
-           git add ./update.py 
-           git commit -m "Incremented UpdateID in update.py" 
-           git push origin ${{ github.ref }} 
-  
-       - name: Run Workflow again with next output file 
-         if: ${{ success() }}  # Stop the workflow if "Run Archive script" does not fail 
-         run: | 
-           curl -X POST \ 
-           -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \ 
-           -H "Accept: application/vnd.github.v3+json" \ 
-           https://api.github.com/repos/${{ github.repository }}/dispatches \ 
-           -d '{"event_type": "workflow_dispatch"}'
+name: Check UpdateID's
+
+on:
+  workflow_dispatch:
+
+jobs:
+  Archive:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository and install Python
+        uses: actions/checkout@v3.5.2
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+
+      - name: Cache Dependencies
+        uses: actions/cache@v2
+        id: cache
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Dependencies
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          echo "Installing dependencies and caching them."
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Archive script
+        id: check_archive_status
+        working-directory: updateids
+        run: |
+          if python ../update.py; then
+            echo "Archive script succeeded!"
+            echo "::set-output name=STATUS::success"
+          else
+            echo "Archive script failed!"
+            echo "::set-output name=STATUS::failure"
+            exit 1
+          fi
+
+      - name: Commit and push changes - updated list
+        if: steps.check_archive_status.outputs.STATUS == 'success'  # Only run if "Run Archive script" succeeds
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add ./updateids
+          git commit -m "Updated updateid list"
+          git push origin ${{ github.ref }}
+
+      - name: Increment UpdateID in update.py
+        if: steps.check_archive_status.outputs.STATUS == 'success'  # Only run if "Run Archive script" succeeds
+        run: |
+          # Read the current number from the file
+          with open('./update.py', 'r') as f:
+            content = f.read()
+            current_number = int(content.strip().split('_')[-1])
+
+          # Increment the number
+          new_number = current_number + 1
+
+          # Update the filename in the content
+          updated_content = content.replace(f'output_{current_number}', f'output_{new_number}')
+
+          # Write the updated content back to the file
+          with open('./update.py', 'w') as f:
+            f.write(updated_content)
+
+      - name: Commit and push changes - update.py
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add ./update.py
+          git commit -m "Incremented UpdateID in update.py"
+          git push origin ${{ github.ref }}
+
+      - name: Run Workflow again with next output file
+        if: steps.check_archive_status.outputs.STATUS == 'success'  # Only run if "Run Archive script" succeeds
+        run: |
+          curl -X POST \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/dispatches \
+          -d '{"event_type": "workflow_dispatch"}'
