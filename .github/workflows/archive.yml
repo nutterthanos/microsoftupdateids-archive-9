@@ -38,6 +38,38 @@ jobs:
         run: |
           if python ../update.py; then
             echo "Archive script succeeded!"
+            echo "success" > status.txt
+          else
+            echo "Archive script failed!"
+            echo "failure" > status.txt
+            exit 1
+          fi
+        continue-on-error: true
+
+      - name: Upload status as artifact
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: archive-status
+          path: status.txt
+
+  IncrementUpdateID:
+    needs: Archive
+    runs-on: ubuntu-latest
+    if: always()  # This job will always run, but we'll check the artifact for status
+    steps:
+      - name: Download artifact with status
+        uses: actions/download-artifact@v2
+        with:
+          name: archive-status
+          path: .
+
+      - name: Check Archive status
+        id: check_archive_status
+        run: |
+          status=$(cat status.txt)
+          if [ "$status" == "success" ]; then
+            echo "Archive script succeeded!"
             echo "::set-output name=STATUS::success"
           else
             echo "Archive script failed!"
@@ -45,17 +77,8 @@ jobs:
             exit 1
           fi
 
-      - name: Commit and push changes - updated list
-        if: steps.check_archive_status.outputs.STATUS == 'success'  # Only run if "Run Archive script" succeeds
-        run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add ./updateids
-          git commit -m "Updated updateid list"
-          git push origin ${{ github.ref }}
-
       - name: Increment UpdateID in update.py
-        if: steps.check_archive_status.outputs.STATUS == 'success'  # Only run if "Run Archive script" succeeds
+        if: steps.check_archive_status.outputs.STATUS == 'success'  # Only run if "Run Archive script" succeeded
         run: |
           # Read the current number from the file
           with open('./update.py', 'r') as f:
@@ -72,7 +95,17 @@ jobs:
           with open('./update.py', 'w') as f:
             f.write(updated_content)
 
+      - name: Commit and push changes - updateids
+        if: steps.check_archive_status.outputs.STATUS == 'success'  # Only run if "Run Archive script" succeeded
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add ./updateids
+          git commit -m "Updated updateids"
+          git push origin ${{ github.ref }}
+
       - name: Commit and push changes - update.py
+        if: steps.check_archive_status.outputs.STATUS == 'success'  # Only run if "Run Archive script" succeeded
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
@@ -81,7 +114,7 @@ jobs:
           git push origin ${{ github.ref }}
 
       - name: Run Workflow again with next output file
-        if: steps.check_archive_status.outputs.STATUS == 'success'  # Only run if "Run Archive script" succeeds
+        if: steps.check_archive_status.outputs.STATUS == 'success'  # Only run if "Run Archive script" succeeded
         run: |
           curl -X POST \
           -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
