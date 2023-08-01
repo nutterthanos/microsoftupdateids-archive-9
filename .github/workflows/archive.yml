@@ -38,10 +38,10 @@ jobs:
         run: |
           if python ../update.py; then
             echo "Archive script succeeded!"
-            echo "success" > status.txt
+            echo "success" > ../status.txt
           else
             echo "Archive script failed!"
-            echo "failure" > status.txt
+            echo "failure" > ../status.txt
             exit 1
           fi
         continue-on-error: true
