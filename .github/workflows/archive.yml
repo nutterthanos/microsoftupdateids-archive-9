@@ -16,19 +16,9 @@ jobs:
         with:
           python-version: '3.9'
 
-      - name: Cache Dependencies
-        uses: actions/cache@v2
-        id: cache
-        with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
-
       - name: Install Dependencies
-        if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          echo "Installing dependencies and caching them."
+          echo "Installing dependencies"
           python -m pip install --upgrade pip
           pip install -r requirements.txt
         continue-on-error: false  # Set this to false to stop the workflow if the step fails
