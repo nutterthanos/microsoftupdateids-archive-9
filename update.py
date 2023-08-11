@@ -93,7 +93,7 @@ async def main():
     queue = asyncio.Queue()
 
     # Populate the queue with UpdateIDs (you need to replace 'your_file.txt' with the actual file name)
-    with open('../output_files/output_487.txt', 'r') as f:
+    with open('../output_files/output_488.txt', 'r') as f:
         for line in f:
             update_id = line.strip()  # Read the UpdateID as a string
             await queue.put(update_id)
